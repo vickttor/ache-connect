@@ -1,0 +1,16 @@
+# infra/compose.yaml
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ache_db
+    ports:
+      - '5432:5432'
+    volumes:
+      - ache_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  ache_postgres_data:

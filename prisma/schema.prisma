@@ -1,0 +1,125 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Medico {
+  id             String      @id @default(uuid())
+  nome           String
+  crm            String      @unique
+  especialidade  String
+  email          String      @unique
+  senha          String      // Campo para senha (hash)
+  telefone       String?
+  dataNascimento DateTime?
+  estado         String?
+  regiao         String      // Para identificar médicos em regiões remotas
+  totalAchePoints Int        @default(0)  // Total acumulado de AchePoints
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  pacientes      Paciente[]
+  prescricoes    Prescricao[]
+  pontos         AchePoint[]
+}
+
+model Paciente {
+  id           String      @id @default(uuid())
+  nome         String
+  idade        Int?
+  telefone     String      // Número do WhatsApp
+  medicoId     String
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  medico       Medico      @relation(fields: [medicoId], references: [id])
+  prescricoes  Prescricao[]
+
+ // Adicione este índice composto
+  @@unique([medicoId, nome])
+}
+
+model Produto {
+  id           String      @id @default(uuid())
+  nome         String      @unique
+  posologia    String?
+  descricao    String?
+  emCampanha   Boolean     @default(false)  // Para produtos com desconto especial
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  prescricoes  PrescricaoProduto[]
+}
+
+model Prescricao {
+  id                  String      @id @default(uuid())
+  pacienteId          String
+  medicoId            String
+  dataEmissao         DateTime    @default(now())
+  validade            Int         @default(30)  // Em dias
+  informacoesAdicionais String?
+  status              String      @default("emitida")  // emitida, enviada, visualizada
+  codigoRastreio      String?     @unique  // Para rastreamento da prescrição
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+  medico              Medico      @relation(fields: [medicoId], references: [id])
+  paciente            Paciente    @relation(fields: [pacienteId], references: [id])
+  produtos            PrescricaoProduto[]
+}
+
+model PrescricaoProduto {
+  id             String      @id @default(uuid())
+  prescricaoId   String
+  produtoId      String
+  quantidade     String
+  posologia      String?
+  duracao        String?
+  usoContinuo    Boolean     @default(false)
+  prescricao     Prescricao  @relation(fields: [prescricaoId], references: [id], onDelete: Cascade)
+  produto        Produto     @relation(fields: [produtoId], references: [id])
+
+  @@unique([prescricaoId, produtoId])
+}
+
+model AchePoint {
+  id             String      @id @default(uuid())
+  medicoId       String
+  pontos         Int         @default(0)
+  mesReferencia  String      // Formato: "YYYY-MM"
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  medico         Medico      @relation(fields: [medicoId], references: [id])
+  resgates       Resgate[]
+
+  @@unique([medicoId, mesReferencia])
+}
+
+model Beneficio {
+  id             String      @id @default(uuid())
+  nome           String
+  descricao      String
+  categoria      String      // Entretenimento, Alimentação, Varejo, etc.
+  valorPontos    Int
+  imagemUrl      String?
+  ativo          Boolean     @default(true)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  resgates       Resgate[]
+
+  // Adicione este índice composto
+  @@unique([nome, categoria])
+}
+
+model Resgate {
+  id             String      @id @default(uuid())
+  achePointId    String
+  beneficioId    String
+  pontos         Int
+  status         String      @default("pendente") // pendente, concluído, cancelado
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  achePoint      AchePoint   @relation(fields: [achePointId], references: [id])
+  beneficio      Beneficio   @relation(fields: [beneficioId], references: [id])
+}
